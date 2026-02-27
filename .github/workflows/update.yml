@@ -1,0 +1,37 @@
+name: Update Word-of-Mouth Field Log (5 min)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch JSON from Apps Script
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error \
+            "https://script.google.com/macros/s/AKfycbwzySWfCCswII7NMHL9CDezb_DQbzXOs0R4Wa51R1-Oy3MJHdvUn6VDGY1YruuwpEqmRQ/exec" \
+            -o field_log.json
+
+      - name: Validate JSON
+        run: |
+          python3 - <<'PY'
+import json
+with open("field_log.json","r",encoding="utf-8") as f:
+    json.load(f)
+print("OK: valid JSON")
+PY
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add field_log.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update field log"
+          git push
